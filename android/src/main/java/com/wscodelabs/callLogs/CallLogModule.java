@@ -1,9 +1,12 @@
 package com.wscodelabs.callLogs;
 
+import android.content.ContentResolver;
+import android.net.Uri;
 import android.provider.CallLog;
 import android.provider.CallLog.Calls;
 import android.database.Cursor;
 import android.content.Context;
+import android.provider.ContactsContract;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -60,6 +63,9 @@ public class CallLogModule extends ReactContextBaseJavaModule {
             String phoneNumber = cursor.getString(NUMBER_COLUMN_INDEX);
             int duration = cursor.getInt(DURATION_COLUMN_INDEX);
             String name = cursor.getString(NAME_COLUMN_INDEX);
+            if (name == null && phoneNumber != null) {
+                name = getNameForNumber(this.context, phoneNumber);
+            }
 
             String timestampStr = cursor.getString(DATE_COLUMN_INDEX);
             DateFormat df = SimpleDateFormat.getDateTimeInstance(SimpleDateFormat.MEDIUM, SimpleDateFormat.MEDIUM);
@@ -100,6 +106,31 @@ public class CallLogModule extends ReactContextBaseJavaModule {
 
     private boolean shouldContinue(int limit, int count) {
         return limit < 0 || count < limit;
+    }
+
+    private String getNameForNumber(Context context, String number) {
+
+        String res = null;
+        try {
+            ContentResolver resolver = context.getContentResolver();
+            Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number));
+            String[] conditions = new String[1];
+            conditions[0] = ContactsContract.PhoneLookup.DISPLAY_NAME;
+
+
+            Cursor c = resolver.query(uri, conditions, null, null, null);
+
+            if (c != null) {
+                if (c.moveToFirst()) {
+                    res = c.getString(c.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
+                }
+                c.close();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return res;
     }
 }
 
